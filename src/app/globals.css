@@ -1,26 +1,208 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --accent: 141 122 116;
+    --accent-hover: 122 104 99;
+    --bg: 247 245 241;
+    --surface: 255 255 255;
+    --fg: 17 24 39;
+    --muted: 107 114 128;
+    
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-display: 'Outfit', system-ui, -apple-system, sans-serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: rgb(var(--bg));
+    color: rgb(var(--fg));
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Modern premium buttons */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2.5 rounded-full font-bold text-white transition-all duration-300 cursor-pointer shadow-sm;
+    background-color: rgb(var(--accent));
+  }
+  .btn-primary:hover {
+    @apply shadow-md transform -translate-y-0.5;
+    background-color: rgb(var(--accent-hover));
+  }
+  .btn-primary:active {
+    @apply transform translate-y-0;
+  }
+
+  .btn-dark {
+    @apply inline-flex items-center justify-center gap-2.5 rounded-full font-bold bg-[rgb(var(--fg))] text-white transition-all duration-300 cursor-pointer shadow-sm;
+  }
+  .btn-dark:hover {
+    @apply brightness-110 shadow-md transform -translate-y-0.5;
+  }
+  .btn-dark:active {
+    @apply transform translate-y-0;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2.5 rounded-full font-semibold border-2 transition-all duration-300 cursor-pointer;
+    border-color: rgba(var(--accent), 0.5);
+    color: rgb(var(--accent));
+  }
+  .btn-outline:hover {
+    @apply shadow-sm transform -translate-y-0.5 border-[rgb(var(--accent))];
+    background-color: rgb(var(--accent));
+    color: white;
+  }
+  .btn-outline:active {
+    @apply transform translate-y-0;
+  }
+
+  /* Luxurious Card Designs */
+  .card {
+    @apply bg-white rounded-2xl overflow-hidden transition-all duration-500 relative flex flex-col h-full;
+    border: 1px solid rgba(var(--accent), 0.1);
+    box-shadow: 0 4px 20px -2px rgba(17, 24, 39, 0.02), 0 2px 6px -1px rgba(17, 24, 39, 0.01);
+  }
+  .card:hover {
+    @apply -translate-y-1.5;
+    border-color: rgba(var(--accent), 0.3);
+    box-shadow: 0 20px 25px -5px rgba(141, 122, 116, 0.08), 0 10px 10px -5px rgba(141, 122, 116, 0.04);
+  }
+
+  /* Glassmorphism Styles */
+  .glass-card {
+    @apply rounded-2xl border backdrop-blur-md;
+    background: rgba(255, 255, 255, 0.7);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 8px 32px 0 rgba(141, 122, 116, 0.04);
+  }
+
+  .glass-card-dark {
+    @apply rounded-2xl border backdrop-blur-md text-white;
+    background: rgba(17, 24, 39, 0.85);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  /* Navigation Link styles */
+  .nav-link {
+    @apply relative px-1 py-1.5 text-[15px] font-medium text-gray-600 transition-colors duration-300;
+  }
+  .nav-link:hover {
+    color: rgb(var(--accent));
+  }
+  .nav-link::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-full h-[2px] bg-[rgb(var(--accent))] rounded-full transform scale-x-0 transition-transform duration-300 origin-right;
+  }
+  .nav-link:hover::after {
+    @apply scale-x-100 origin-left;
+  }
+  .nav-link.active {
+    @apply text-[rgb(var(--fg))] font-bold;
+  }
+  .nav-link.active::after {
+    @apply scale-x-100 bg-[rgb(var(--fg))];
+  }
+
+  /* Custom Input styling */
+  .form-input {
+    @apply w-full px-4 py-3 rounded-xl border border-gray-200 bg-white transition-all duration-300 text-sm focus:outline-none focus:ring-4;
+    focus-ring-color: rgba(var(--accent), 0.15);
+    focus-border-color: rgb(var(--accent));
+  }
+  .form-input:focus {
+    border-color: rgb(var(--accent));
+    box-shadow: 0 0 0 4px rgba(var(--accent), 0.12);
+  }
+
+  /* Marquee wrapper & tracks */
+  .marquee-wrapper {
+    @apply relative overflow-hidden py-5;
+    border-top: 1px dashed rgba(var(--accent), 0.2);
+    border-bottom: 1px dashed rgba(var(--accent), 0.2);
+  }
+  .marquee-wrapper::before,
+  .marquee-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 100px;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .marquee-wrapper::before {
+    left: 0;
+    background: linear-gradient(to right, rgb(var(--bg)), transparent);
+  }
+  .marquee-wrapper::after {
+    right: 0;
+    background: linear-gradient(to left, rgb(var(--bg)), transparent);
+  }
+  .marquee-track {
+    @apply flex w-max;
+    animation: scroll-brands 20s linear infinite;
+  }
+  .marquee-track:hover {
+    animation-play-state: paused;
+  }
+  @keyframes scroll-brands {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* Custom Scanner Overlays */
+  .scanner-line {
+    @apply absolute left-0 w-full h-[3px] z-10 pointer-events-none;
+    background: linear-gradient(to right, transparent, rgb(var(--accent)), transparent);
+    box-shadow: 0 0 8px 1px rgb(var(--accent)), 0 0 15px 4px rgba(var(--accent), 0.4);
+    animation: scan-vertical 3s ease-in-out infinite alternate;
+  }
+  @keyframes scan-vertical {
+    0% { top: 5%; }
+    100% { top: 95%; }
+  }
+
+  /* Pulse animation */
+  .pulse-ring {
+    @apply absolute rounded-full border pointer-events-none;
+    border-color: rgba(var(--accent), 0.4);
+    animation: pulse-out 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  }
+  @keyframes pulse-out {
+    0% {
+      transform: scale(0.95);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(1.3);
+      opacity: 0;
+    }
+  }
+
+  /* Shimmer skeleton utility */
+  .shimmer {
+    background: linear-gradient(90deg, #f3f3f3 25%, #ececec 50%, #f3f3f3 75%);
+    background-size: 200% 100%;
+    animation: shimmer-swipe 1.5s infinite;
+  }
+  @keyframes shimmer-swipe {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
 }
