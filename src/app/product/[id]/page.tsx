@@ -2,10 +2,11 @@
 
 import { use, useState, useEffect } from 'react';
 import { getProductById } from '@/lib/products';
+import { getBrandByName } from '@/lib/brands';
 import { notFound, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Shirt, Ruler, ChevronDown, Check, Sparkles, Truck, ShieldAlert, X } from 'lucide-react';
+import { ArrowLeft, Shirt, Ruler, ChevronDown, Check, Sparkles, ShieldAlert, X } from 'lucide-react';
 
 // Map product brands and items to visual size chart images on disk
 function getSizeChartForProduct(product: { brand: string; name: string }): string {
@@ -65,8 +66,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const { id } = use(params);
   const product = getProductById(id);
 
-  const [activeTab, setActiveTab] = useState<'description' | 'fit' | 'shipping'>('description');
-  const [selectedSize, setSelectedSize] = useState<string>('M');
+  const [activeTab, setActiveTab] = useState<'description' | 'fit'>('description');
   const [userBodyType, setUserBodyType] = useState<string | null>(null);
   const [isSizeModalOpen, setIsSizeModalOpen] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
@@ -91,8 +91,13 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     localStorage.setItem('selectedOutfit', product.image);
     localStorage.setItem('selectedProductName', product.name);
     localStorage.setItem('selectedBrandName', product.brand);
+    localStorage.setItem('selectedProductType', product.type);
     router.push('/tryon');
   };
+
+  // Resolve purchase link: product override → brand storeUrl → fallback
+  const brand = getBrandByName(product.brand);
+  const purchaseUrl = product.shopeeUrl || brand?.storeUrl || '#';
 
   const handlePurchaseClick = () => {
     try {
@@ -159,34 +164,6 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             </p>
           </div>
 
-          <div className="border-t border-gray-150 pt-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs uppercase tracking-wider font-bold text-gray-400">Select Size</h3>
-              <button 
-                onClick={() => setIsSizeModalOpen(true)}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-[rgb(var(--accent))] hover:text-[rgb(var(--accent-hover))] hover:underline cursor-pointer uppercase tracking-wider transition-colors duration-200 border-none bg-transparent"
-              >
-                <Ruler className="w-3.5 h-3.5" /> Size Guide
-              </button>
-            </div>
-
-            <div className="flex gap-2.5">
-              {['S', 'M', 'L', 'XL'].map(size => (
-                <button
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
-                  className={`w-11 h-11 rounded-xl text-xs font-bold transition-all duration-300 cursor-pointer border ${
-                    selectedSize === size
-                      ? 'bg-[rgb(var(--fg))] border-[rgb(var(--fg))] text-white shadow-sm'
-                      : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
-                  }`}
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* AI Advisor Panel */}
           <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/60 text-amber-900 text-sm flex gap-3 shadow-sm">
             <Sparkles className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -194,7 +171,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
               <p className="font-bold">AI Fit Assessment</p>
               {userBodyType ? (
                 <p className="text-xs text-amber-800">
-                  Based on your body scan results (**{userBodyType}**), size **{selectedSize}** will fit you {isRecommendedFit ? 'beautifully!' : 'comfortably.'}
+                  Based on your body scan results (**{userBodyType}**), this piece will fit you {isRecommendedFit ? 'beautifully!' : 'comfortably.'}
                 </p>
               ) : (
                 <p className="text-xs text-amber-800">
@@ -213,13 +190,13 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
               <Shirt className="w-4 h-4" /> Virtual Try-On
             </button>
             <a
-              href={product.shopeeUrl || "https://wa.me/message/WMVAXJ7JC73TF1"}
+              href={purchaseUrl}
               target="_blank"
               rel="noopener noreferrer"
               onClick={handlePurchaseClick}
               className="flex-1 btn-dark py-2.5 px-4 text-xs font-bold flex items-center justify-center bg-transparent border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-none whitespace-nowrap cursor-pointer"
             >
-              Purchase Item
+              Purchase on {product.brand}
             </a>
           </div>
 
@@ -229,8 +206,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             <div className="flex border-b border-gray-150 text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
               {[
                 { id: 'description', label: 'Details' },
-                { id: 'fit', label: 'Fit Guide' },
-                { id: 'shipping', label: 'Shipping' }
+                { id: 'fit', label: 'Fit Guide' }
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -264,15 +240,6 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                       <Ruler className="w-4 h-4 text-[rgb(var(--accent))]" /> View Visual Size Guide Chart
                     </button>
                   </div>
-                </div>
-              )}
-
-              {activeTab === 'shipping' && (
-                <div className="flex items-start gap-2.5">
-                  <Truck className="w-4 h-4 text-gray-400 mt-0.5" />
-                  <p>
-                    Free courier shipping across all standard regions. Order packages are packed in eco-friendly minimalist boxes. Returns accepted within 14 days of try-on verification.
-                  </p>
                 </div>
               )}
             </div>

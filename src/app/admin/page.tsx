@@ -5,8 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { getClientProducts, saveClientProducts, Product } from '@/lib/products';
 import { getClientBrands, saveClientBrands, Brand } from '@/lib/brands';
 import { 
-  ShieldAlert, Plus, Edit2, Trash2, LayoutDashboard, ShoppingBag, Grid, 
-  MessageSquare, Eye, TrendingUp, X, Check, Star, CheckSquare, Square, ToggleLeft, ToggleRight
+  ShieldAlert, Plus, Edit2, Trash2, ShoppingBag, Grid, 
+  Eye, TrendingUp, X, Check, Star, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { initAnalyticsData, ClickLog } from '@/lib/analytics';
@@ -22,10 +22,11 @@ function AdminPageContent() {
   const [activeTab, setActiveTab] = useState<'analytics' | 'cms' | 'brands' | 'feedbacks'>(tabParam as any);
   const [timeRangeFilter, setTimeRangeFilter] = useState<'24h' | '7d' | '30d' | 'all'>('7d');
   const [hoveredBrand, setHoveredBrand] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   // Determine admin status from Supabase user metadata or localStorage fallback
   const isAdmin = user?.user_metadata?.role === 'admin'
-    || (typeof window !== 'undefined' && localStorage.getItem('userRole') === 'admin');
+    || (mounted && localStorage.getItem('userRole') === 'admin');
 
   // Catalogs state
   const [catalog, setCatalog] = useState<Product[]>([]);
@@ -37,7 +38,6 @@ function AdminPageContent() {
   // Product manager filters state
   const [selectedBrandFilter, setSelectedBrandFilter] = useState('all');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('all');
-  const [selectedAvailabilityFilter, setSelectedAvailabilityFilter] = useState('all');
 
   // Modals state
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -50,10 +50,9 @@ function AdminPageContent() {
   const [formName, setFormName] = useState('');
   const [formBrand, setFormBrand] = useState('');
   const [formType, setFormType] = useState<'top' | 'bottom'>('top');
-  const [formPrice, setFormPrice] = useState('Rp 349.000');
   const [formImage, setFormImage] = useState('/images/Evara/test-outfit.png');
   const [formFit, setFormFit] = useState<string[]>(['regular']);
-  const [formAvailable, setFormAvailable] = useState(true);
+  const [formShopeeUrl, setFormShopeeUrl] = useState('');
 
   // Brand Form states
   const [formBrandName, setFormBrandName] = useState('');
@@ -61,9 +60,27 @@ function AdminPageContent() {
   const [formBrandDesc, setFormBrandDesc] = useState('');
   const [formBrandLogo, setFormBrandLogo] = useState('/images/Evara/evara.jpg');
   const [formBrandDarkBg, setFormBrandDarkBg] = useState(false);
+  const [formBrandStoreUrl, setFormBrandStoreUrl] = useState('');
 
   // Click logs state
   const [clicks, setClicks] = useState<ClickLog[]>([]);
+
+  // Mark as mounted after hydration — prevents server/client mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Load data from localStorage after mount
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      setCatalog(getClientProducts());
+      setBrandsList(getClientBrands());
+      const { clicks: loadedClicks, feedbacks: loadedFeedbacks } = initAnalyticsData();
+      setClicks(loadedClicks);
+      setFeedbacks(loadedFeedbacks);
+    } catch {}
+  }, [mounted]);
 
   // Sync tab state with search parameters
   useEffect(() => {
@@ -72,26 +89,10 @@ function AdminPageContent() {
     }
   }, [tabParam]);
 
-  // Show loading while auth is being determined
-  if (authLoading) {
+  // Show loading while auth is being determined or before client hydration
+  if (authLoading || !mounted) {
     return <Loader2 />;
   }
-
-  // Load data
-  useEffect(() => {
-    try {
-      // Load products
-      setCatalog(getClientProducts());
-
-      // Load brands
-      setBrandsList(getClientBrands());
-
-      // Load and seed click logs and feedbacks using the shared analytics utility
-      const { clicks: loadedClicks, feedbacks: loadedFeedbacks } = initAnalyticsData();
-      setClicks(loadedClicks);
-      setFeedbacks(loadedFeedbacks);
-    } catch {}
-  }, []);
 
   // Sync tab navigation cleanly without full refresh
   const handleTabChange = (tab: 'analytics' | 'cms' | 'brands' | 'feedbacks') => {
@@ -143,7 +144,6 @@ function AdminPageContent() {
 
   const totalProducts = catalog.length;
   const totalBrands = brandsList.length;
-  const unavailableCount = catalog.filter(p => p.isAvailable === false).length;
   const avgFeedbackRating = filteredFeedbacks.length > 0
     ? (filteredFeedbacks.reduce((acc, f) => acc + (f.rating || 5), 0) / filteredFeedbacks.length).toFixed(1)
     : '5.0';
@@ -154,10 +154,9 @@ function AdminPageContent() {
     setFormName('');
     setFormBrand(brandsList[0]?.name || 'Evara');
     setFormType('top');
-    setFormPrice('Rp 349.000');
     setFormImage('/images/Evara/test-outfit.png');
     setFormFit(['regular']);
-    setFormAvailable(true);
+    setFormShopeeUrl('');
     setIsProductModalOpen(true);
   };
 
@@ -166,10 +165,9 @@ function AdminPageContent() {
     setFormName(prod.name);
     setFormBrand(prod.brand);
     setFormType(prod.type);
-    setFormPrice(prod.price || 'Rp 349.000');
     setFormImage(prod.image);
     setFormFit(prod.fit);
-    setFormAvailable(prod.isAvailable !== false);
+    setFormShopeeUrl(prod.shopeeUrl || '');
     setIsProductModalOpen(true);
   };
 
@@ -188,10 +186,9 @@ function AdminPageContent() {
               name: formName, 
               brand: formBrand, 
               type: formType, 
-              price: formPrice, 
               image: formImage, 
               fit: formFit,
-              isAvailable: formAvailable
+              shopeeUrl: formShopeeUrl || undefined
             } 
           : p
       );
@@ -202,10 +199,9 @@ function AdminPageContent() {
         name: formName,
         brand: formBrand,
         type: formType,
-        price: formPrice,
         image: formImage,
         fit: formFit,
-        isAvailable: formAvailable
+        shopeeUrl: formShopeeUrl || undefined
       };
       updatedCatalog.push(newProduct);
     }
@@ -221,14 +217,6 @@ function AdminPageContent() {
       setCatalog(updated);
       saveClientProducts(updated);
     }
-  };
-
-  const handleProductAvailabilityToggle = (prod: Product) => {
-    const updated = catalog.map(p => 
-      p.id === prod.id ? { ...p, isAvailable: p.isAvailable === false } : p
-    );
-    setCatalog(updated);
-    saveClientProducts(updated);
   };
 
   const handleFitCheckbox = (fitType: string) => {
@@ -247,6 +235,7 @@ function AdminPageContent() {
     setFormBrandDesc('');
     setFormBrandLogo('/images/Evara/evara.jpg');
     setFormBrandDarkBg(false);
+    setFormBrandStoreUrl('');
     setIsBrandModalOpen(true);
   };
 
@@ -257,6 +246,7 @@ function AdminPageContent() {
     setFormBrandDesc(brand.description);
     setFormBrandLogo(brand.logo);
     setFormBrandDarkBg(!!brand.darkBg);
+    setFormBrandStoreUrl(brand.storeUrl || '');
     setIsBrandModalOpen(true);
   };
 
@@ -272,7 +262,8 @@ function AdminPageContent() {
       slug,
       description: formBrandDesc,
       logo: formBrandLogo,
-      darkBg: formBrandDarkBg
+      darkBg: formBrandDarkBg,
+      storeUrl: formBrandStoreUrl || undefined
     };
 
     if (editingBrand) {
@@ -322,13 +313,6 @@ function AdminPageContent() {
 
     // Category filter
     if (selectedTypeFilter !== 'all' && p.type !== selectedTypeFilter) return false;
-
-    // Availability filter
-    if (selectedAvailabilityFilter !== 'all') {
-      const isAvail = p.isAvailable !== false;
-      if (selectedAvailabilityFilter === 'available' && !isAvail) return false;
-      if (selectedAvailabilityFilter === 'soldout' && isAvail) return false;
-    }
 
     return true;
   });
@@ -584,7 +568,7 @@ function AdminPageContent() {
             </div>
 
             {/* Summary Dashboard Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white border border-gray-150/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
                 <span className="text-[9px] tracking-widest text-gray-400 font-bold uppercase leading-none">Shopee Clicks</span>
                 <h2 className="text-3xl font-black font-display text-gray-800 mt-2 flex items-center justify-between">
@@ -607,13 +591,6 @@ function AdminPageContent() {
                 </h2>
               </div>
               <div className="bg-white border border-gray-150/80 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
-                <span className="text-[9px] tracking-widest text-gray-400 font-bold uppercase leading-none">Sold Out / Hidden</span>
-                <h2 className="text-3xl font-black font-display text-gray-800 mt-2 flex items-center justify-between">
-                  {unavailableCount}
-                  <X className="w-5 h-5 text-red-500" />
-                </h2>
-              </div>
-              <div className="bg-white border border-gray-150/80 rounded-2xl p-5 shadow-sm col-span-2 lg:col-span-1 flex flex-col justify-between">
                 <span className="text-[9px] tracking-widest text-gray-400 font-bold uppercase leading-none">Avg Experience</span>
                 <h2 className="text-3xl font-black font-display text-gray-800 mt-2 flex items-center justify-between">
                   {avgFeedbackRating}/5
@@ -896,7 +873,7 @@ function AdminPageContent() {
           </div>
 
           {/* Filters Row */}
-          <div className="grid grid-cols-3 gap-4 bg-gray-50/60 p-4 rounded-2xl border border-gray-150/80 shadow-sm">
+          <div className="grid grid-cols-2 gap-4 bg-gray-50/60 p-4 rounded-2xl border border-gray-150/80 shadow-sm">
             <div>
               <label className="block text-[8px] font-bold uppercase tracking-widest text-gray-400 mb-1">Filter Brand</label>
               <select
@@ -922,18 +899,6 @@ function AdminPageContent() {
                 <option value="bottom">Bottoms / Pants</option>
               </select>
             </div>
-            <div>
-              <label className="block text-[8px] font-bold uppercase tracking-widest text-gray-400 mb-1">Filter Availability</label>
-              <select
-                value={selectedAvailabilityFilter}
-                onChange={e => setSelectedAvailabilityFilter(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none text-xs font-semibold bg-white cursor-pointer"
-              >
-                <option value="all">All Statuses</option>
-                <option value="available">Available</option>
-                <option value="soldout">Sold Out</option>
-              </select>
-            </div>
           </div>
 
           {/* Product Manager Table */}
@@ -946,14 +911,11 @@ function AdminPageContent() {
                     <th className="px-6 py-4">Product Specs</th>
                     <th className="px-6 py-4">Type</th>
                     <th className="px-6 py-4">Fits</th>
-                    <th className="px-6 py-4 text-center">Availability</th>
-                    <th className="px-6 py-4">Price</th>
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium">
                   {filteredProducts.map(prod => {
-                    const isAvail = prod.isAvailable !== false;
                     return (
                       <tr key={prod.id} className="hover:bg-gray-50/20">
                         <td className="px-6 py-3">
@@ -975,21 +937,6 @@ function AdminPageContent() {
                             ))}
                           </div>
                         </td>
-                        <td className="px-6 py-3 text-center">
-                          <button
-                            onClick={() => handleProductAvailabilityToggle(prod)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border cursor-pointer hover:scale-105 transition-transform"
-                            style={{
-                              backgroundColor: isAvail ? 'rgba(16, 185, 129, 0.08)' : 'rgba(156, 163, 175, 0.08)',
-                              borderColor: isAvail ? 'rgba(16, 185, 129, 0.2)' : 'rgba(156, 163, 175, 0.2)',
-                              color: isAvail ? '#10b981' : '#9ca3af'
-                            }}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full ${isAvail ? 'bg-emerald-500' : 'bg-gray-400'}`} />
-                            {isAvail ? 'Available' : 'Sold Out'}
-                          </button>
-                        </td>
-                        <td className="px-6 py-3 text-gray-800 font-bold">{prod.price || 'Rp 349.000'}</td>
                         <td className="px-6 py-3 text-right">
                           <div className="inline-flex gap-2">
                             <button
@@ -1203,17 +1150,6 @@ function AdminPageContent() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Pricing (Rp)</label>
-                  <input
-                    type="text" required value={formPrice}
-                    onChange={e => setFormPrice(e.target.value)}
-                    className="form-input" placeholder="Rp 349.000"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
                   <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Garment Category</label>
                   <select
                     value={formType} onChange={e => setFormType(e.target.value as any)}
@@ -1223,19 +1159,36 @@ function AdminPageContent() {
                     <option value="bottom">Bottoms / Pants</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Visual Image URL</label>
-                  <select
-                    value={formImage} onChange={e => setFormImage(e.target.value)}
-                    className="form-input bg-white cursor-pointer text-xs"
-                  >
-                    <option value="/images/Evara/test-outfit.png">Default Mock Jacket</option>
-                    <option value="/images/Evara/Forme_Vest_Gray-removebg-preview.png">Evara Forme Vest Gray</option>
-                    <option value="/images/Evara/Forme_Pants_Gray-removebg-preview.png">Evara Forme Pants Gray</option>
-                    <option value="/images/Unit/Orca_UNIT-removebg-preview.png">UNIT Orca Shirt</option>
-                    <option value="/images/Reapin/Airbrush_Boxy_T-shirt_Horse-removebg-preview.png">Reapin Horse Tee</option>
-                  </select>
-                </div>
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Visual Image URL</label>
+                <select
+                  value={formImage} onChange={e => setFormImage(e.target.value)}
+                  className="form-input bg-white cursor-pointer text-xs"
+                >
+                  <option value="/images/Evara/test-outfit.png">Default Mock Jacket</option>
+                  <option value="/images/Evara/Forme_Vest_Gray-removebg-preview.png">Evara Forme Vest Gray</option>
+                  <option value="/images/Evara/Forme_Pants_Gray-removebg-preview.png">Evara Forme Pants Gray</option>
+                  <option value="/images/Unit/Orca_UNIT-removebg-preview.png">UNIT Orca Shirt</option>
+                  <option value="/images/Reapin/Airbrush_Boxy_T-shirt_Horse-removebg-preview.png">Reapin Horse Tee</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">
+                  Product Link (Override)
+                </label>
+                <input
+                  type="url"
+                  value={formShopeeUrl}
+                  onChange={e => setFormShopeeUrl(e.target.value)}
+                  className="form-input text-xs"
+                  placeholder="Leave empty to use brand default link"
+                />
+                <p className="text-[8px] text-gray-400 mt-1">
+                  Override the brand&apos;s default store link for this specific product
+                </p>
               </div>
 
               {/* Fit Recommendations */}
@@ -1260,26 +1213,6 @@ function AdminPageContent() {
                     );
                   })}
                 </div>
-              </div>
-
-              {/* Availability checkbox */}
-              <div className="border-t border-gray-100 pt-3 flex items-center justify-between">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Availability Status</span>
-                <button
-                  type="button"
-                  onClick={() => setFormAvailable(!formAvailable)}
-                  className="inline-flex items-center gap-2 text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer select-none"
-                >
-                  {formAvailable ? (
-                    <span className="flex items-center gap-1.5 text-emerald-600">
-                      <ToggleRight className="w-8 h-8 stroke-[1.5]" /> Available in Store
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1.5 text-gray-400">
-                      <ToggleLeft className="w-8 h-8 stroke-[1.5]" /> Sold Out / Unavailable
-                    </span>
-                  )}
-                </button>
               </div>
 
               {/* Submit */}
@@ -1348,6 +1281,18 @@ function AdminPageContent() {
                   onChange={e => setFormBrandLogo(e.target.value)}
                   className="form-input text-xs" placeholder="/images/Evara/evara.jpg"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Store URL (Default)</label>
+                <input
+                  type="url" value={formBrandStoreUrl}
+                  onChange={e => setFormBrandStoreUrl(e.target.value)}
+                  className="form-input text-xs" placeholder="https://www.brandname.com"
+                />
+                <p className="text-[8px] text-gray-400 mt-1">
+                  Default link for all products from this brand (can be overridden per product)
+                </p>
               </div>
 
               {/* Dark BG option */}

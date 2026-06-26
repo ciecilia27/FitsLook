@@ -94,6 +94,22 @@ export function getClientProducts(): Product[] {
     localStorage.removeItem('productsCatalog');
   }
 
+  // Bust stale caches saved before the `type` field existed — without a valid
+  // type, bottoms get misclassified as tops in the virtual try-on overlay.
+  const cached = localStorage.getItem('productsCatalog');
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached) as Product[];
+      const hasValidTypes = Array.isArray(parsed) && parsed.length > 0 &&
+        parsed.every(p => p.type === 'top' || p.type === 'bottom');
+      if (!hasValidTypes) {
+        localStorage.removeItem('productsCatalog');
+      }
+    } catch {
+      localStorage.removeItem('productsCatalog');
+    }
+  }
+
   const storedUpdated = localStorage.getItem('productsCatalog');
   if (!storedUpdated) {
     localStorage.setItem('productsCatalog', JSON.stringify(defaultProducts));
@@ -111,6 +127,21 @@ export function saveClientProducts(updated: Product[]) {
 
 export function getProductById(id: string): Product | undefined {
   return getClientProducts().find(p => p.id === id);
+}
+
+// Resolve a product's overlay type, falling back to a name-based heuristic when
+// the stored value is missing/stale (e.g. an old localStorage entry). Keeps the
+// virtual try-on from anchoring pants on the upper body.
+export function resolveProductType(
+  rawType: string | null | undefined,
+  name?: string | null
+): 'top' | 'bottom' {
+  if (rawType === 'top' || rawType === 'bottom') return rawType;
+  const n = (name || '').toLowerCase();
+  if (/\b(pant|trouser|jean|short|skirt|skort|jogger|cargo|chino|legging|slack|bottom)/.test(n)) {
+    return 'bottom';
+  }
+  return 'top';
 }
 
 export function getProductsByBrand(brand: string): Product[] {
