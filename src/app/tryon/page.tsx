@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Camera, Loader2, XCircle, Sliders, RefreshCw, Layers, Sparkles, ChevronRight, Grid } from 'lucide-react';
-import { getClientProducts, Product } from '@/lib/products';
+import { getClientProducts, resolveProductType, Product } from '@/lib/products';
 
 export default function TryOnPage() {
   const scriptsLoaded = useCDNScripts();
@@ -13,9 +13,10 @@ export default function TryOnPage() {
   
   // Fit adjustment refs for real-time changes without restarting loop
   const alphaRef = useRef(0.95);
-  const widthScaleRef = useRef(1.10);
-  const heightScaleRef = useRef(1.30);
+  const widthScaleRef = useRef(1.35);
+  const heightScaleRef = useRef(1.55);
   const offsetTopRef = useRef(0.30);
+  const productTypeRef = useRef<'top' | 'bottom'>('top');
 
   // Model & Outfit image refs
   const netRef = useRef<any>(null);
@@ -32,8 +33,8 @@ export default function TryOnPage() {
   // Interactive UI states
   const [activeTab, setActiveTab] = useState<'adjust' | 'switcher'>('adjust');
   const [sliderAlpha, setSliderAlpha] = useState(95);
-  const [sliderWidth, setSliderWidth] = useState(110);
-  const [sliderHeight, setSliderHeight] = useState(130);
+  const [sliderWidth, setSliderWidth] = useState(135);
+  const [sliderHeight, setSliderHeight] = useState(155);
   const [sliderOffset, setSliderOffset] = useState(30);
 
   // Load selected outfit from localStorage initially
@@ -48,10 +49,26 @@ export default function TryOnPage() {
       const img = localStorage.getItem('selectedOutfit');
       const name = localStorage.getItem('selectedProductName');
       const brand = localStorage.getItem('selectedBrandName');
+      const storedType = localStorage.getItem('selectedProductType');
+
+      // Prefer a catalog match for the stored product; fall back to the stored
+      // value or a name-based heuristic so stale localStorage can't misclassify
+      // bottoms as tops in the overlay.
+      let type = resolveProductType(storedType, name);
+      if (name && brand) {
+        const allProducts = getClientProducts();
+        const match = allProducts.find(p => p.name === name && p.brand === brand);
+        if (match) {
+          type = resolveProductType(match.type, match.name);
+        }
+      }
+      localStorage.setItem('selectedProductType', type);
+
       if (img) {
         setOutfitImage(img);
         setProductName(name || 'Fit Outfit');
         setBrandName(brand || 'Fit Look');
+        productTypeRef.current = type;
       }
     } catch {}
   }, []);
@@ -213,14 +230,33 @@ export default function TryOnPage() {
           const ratio = outfit.height / outfit.width;
           const widthBoost = widthScaleRef.current;
           const heightBoost = heightScaleRef.current;
-          const offsetTop = offsetTopRef.current;
           const alpha = alphaRef.current;
 
           let w = 180 * widthBoost;
-          let h = w * ratio * heightBoost;
+          let h = w * ratio;
+          
+          // Apply height constraints and scaling
+          if (productTypeRef.current === 'bottom') {
+            // Pants: constrain to reasonable height
+            const maxHeight = canvas.height * 0.5;
+            const minHeight = canvas.height * 0.35;
+            h = Math.min(Math.max(h, minHeight), maxHeight) * heightBoost;
+          } else {
+            // Tops: use standard scaling
+            h = h * heightBoost;
+          }
 
           const x = canvas.width / 2 - w / 2;
-          const y = canvas.height * 0.32 - h * offsetTop;
+          
+          // Position based on product type
+          let y;
+          if (productTypeRef.current === 'bottom') {
+            // Pants start at waist level (below torso)
+            y = canvas.height * 0.55;
+          } else {
+            // Tops at upper body
+            y = canvas.height * 0.32 - h * 0.2;
+          }
 
           ctx.save();
           ctx.globalAlpha = alpha;
@@ -275,9 +311,12 @@ export default function TryOnPage() {
             // Compute centers (adjusted for mirrored feed)
             const midX = canvas.width - ((ls.position.x + rs.position.x) / 2);
             const shoulderY = (ls.position.y + rs.position.y) / 2;
-            const hipY = (lh?.score && rh?.score)
+            
+            // Calculate hip position with proper confidence threshold
+            const hipDetected = lh && rh && lh.score > 0.25 && rh.score > 0.25;
+            const hipY = hipDetected
               ? (lh.position.y + rh.position.y) / 2
-              : shoulderY + 280;
+              : shoulderY + (canvas.height * 0.45); // Fallback: 45% down from shoulders (waist level)
 
             const bodyWidth = Math.abs(rs.position.x - ls.position.x);
             const torsoHeight = Math.abs(hipY - shoulderY);
@@ -292,21 +331,44 @@ export default function TryOnPage() {
             let w = bodyWidth * 2.28 * widthBoost;
             let h = w * ratio;
             
-            // Constrain height overlays
-            const maxH = torsoHeight * 1.5;
-            const minH = torsoHeight * 0.9;
-            h = Math.min(Math.max(h, minH), maxH) * heightBoost;
-            
-            const fixScale = h / (outfit.height * ratio);
-            w *= fixScale;
+            // Position based on product type
+            let y;
+            if (productTypeRef.current === 'bottom') {
+              // BOTTOMS: width follows the body (hips ≈ shoulder span); height
+              // follows the image's aspect ratio so the pants keep their true
+              // proportions instead of getting squished narrow. The Width/Height
+              // sliders scale each axis independently from there.
+              w = bodyWidth * 2.4 * widthBoost;
+              h = w * ratio * heightBoost;
 
-            const x = midX - w / 2;
-            const y = shoulderY - h * offsetTop;
+              const x = midX - w / 2;
 
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.drawImage(outfit, x, y, w, h);
-            ctx.restore();
+              // Anchor the waistband to the detected hip line. A fixed lift seats
+              // the waist higher (matching the ~0.6 offset users prefer) so the
+              // default already looks right; Shoulder Offset nudges it from there.
+              y = hipY - h * 0.12 - canvas.height * 0.12 - (offsetTop - 0.30) * canvas.height * 0.4;
+
+              ctx.save();
+              ctx.globalAlpha = alpha;
+              ctx.drawImage(outfit, x, y, w, h);
+              ctx.restore();
+            } else {
+              // TOPS: Use torso-proportional constraints
+              const maxH = torsoHeight * 1.5;
+              const minH = torsoHeight * 0.9;
+              h = Math.min(Math.max(h, minH), maxH) * heightBoost;
+              
+              const fixScale = h / (outfit.height * ratio);
+              w *= fixScale;
+              
+              const x = midX - w / 2;
+              y = shoulderY - h * offsetTop;
+
+              ctx.save();
+              ctx.globalAlpha = alpha;
+              ctx.drawImage(outfit, x, y, w, h);
+              ctx.restore();
+            }
           }
         }
       } catch (err) {
@@ -337,12 +399,15 @@ export default function TryOnPage() {
 
   // Quick switch function inside drawer
   const handleSwapOutfit = (prod: Product) => {
+    const type = resolveProductType(prod.type, prod.name);
     setOutfitImage(prod.image);
     setProductName(prod.name);
     setBrandName(prod.brand);
+    productTypeRef.current = type;
     localStorage.setItem('selectedOutfit', prod.image);
     localStorage.setItem('selectedProductName', prod.name);
     localStorage.setItem('selectedBrandName', prod.brand);
+    localStorage.setItem('selectedProductType', type);
   };
 
   return (
@@ -579,7 +644,7 @@ export default function TryOnPage() {
                     <span>{sliderOffset / 100}m</span>
                   </div>
                   <input
-                    type="range" min="5" max="60" value={sliderOffset}
+                    type="range" min="5" max="100" value={sliderOffset}
                     onChange={e => setSliderOffset(parseInt(e.target.value))}
                     className="w-full h-1 bg-gray-150 rounded-lg appearance-none cursor-pointer accent-[rgb(var(--accent))]"
                   />
@@ -588,8 +653,8 @@ export default function TryOnPage() {
                 <button
                   onClick={() => {
                     setSliderAlpha(95);
-                    setSliderWidth(110);
-                    setSliderHeight(130);
+                    setSliderWidth(135);
+                    setSliderHeight(155);
                     setSliderOffset(30);
                   }}
                   className="w-full btn-outline py-2.5 text-[10px] font-bold tracking-wider uppercase flex items-center justify-center gap-1 mt-4"
