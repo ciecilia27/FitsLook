@@ -86,7 +86,9 @@ export default function TryOnPage() {
       return;
     }
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    // Do NOT set crossOrigin for external images (Google Drive) — they don't
+    // send CORS headers, which would block the image entirely. The canvas will
+    // be "tainted" but the image still renders visually on screen.
     img.src = outfitImage;
     img.onload = () => {
       currentOutfitImgRef.current = img;

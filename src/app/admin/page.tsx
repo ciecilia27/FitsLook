@@ -6,8 +6,9 @@ import { getClientProducts, saveClientProducts, Product } from '@/lib/products';
 import { getClientBrands, saveClientBrands, Brand } from '@/lib/brands';
 import { 
   ShieldAlert, Plus, Edit2, Trash2, ShoppingBag, Grid, 
-  Eye, TrendingUp, X, Check, Star, ToggleLeft, ToggleRight
+  Eye, TrendingUp, X, Check, Star, ToggleLeft, ToggleRight, Link2
 } from 'lucide-react';
+import { resolveImageUrl, isGoogleDriveUrl } from '@/lib/google-drive';
 import Link from 'next/link';
 import { initAnalyticsData, ClickLog } from '@/lib/analytics';
 
@@ -154,7 +155,7 @@ function AdminPageContent() {
     setFormName('');
     setFormBrand(brandsList[0]?.name || 'Evara');
     setFormType('top');
-    setFormImage('/images/Evara/test-outfit.png');
+    setFormImage('');
     setFormFit(['regular']);
     setFormShopeeUrl('');
     setIsProductModalOpen(true);
@@ -176,6 +177,8 @@ function AdminPageContent() {
     if (!formName.trim()) return;
 
     let updatedCatalog = [...catalog];
+    // Auto-convert Google Drive links to direct image URLs
+    const resolvedImage = resolveImageUrl(formImage);
 
     if (editingProduct) {
       // Edit
@@ -186,7 +189,7 @@ function AdminPageContent() {
               name: formName, 
               brand: formBrand, 
               type: formType, 
-              image: formImage, 
+              image: resolvedImage, 
               fit: formFit,
               shopeeUrl: formShopeeUrl || undefined
             } 
@@ -199,7 +202,7 @@ function AdminPageContent() {
         name: formName,
         brand: formBrand,
         type: formType,
-        image: formImage,
+        image: resolvedImage,
         fit: formFit,
         shopeeUrl: formShopeeUrl || undefined
       };
@@ -1163,16 +1166,28 @@ function AdminPageContent() {
 
               <div>
                 <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Visual Image URL</label>
-                <select
-                  value={formImage} onChange={e => setFormImage(e.target.value)}
-                  className="form-input bg-white cursor-pointer text-xs"
-                >
-                  <option value="/images/Evara/test-outfit.png">Default Mock Jacket</option>
-                  <option value="/images/Evara/Forme_Vest_Gray-removebg-preview.png">Evara Forme Vest Gray</option>
-                  <option value="/images/Evara/Forme_Pants_Gray-removebg-preview.png">Evara Forme Pants Gray</option>
-                  <option value="/images/Unit/Orca_UNIT-removebg-preview.png">UNIT Orca Shirt</option>
-                  <option value="/images/Reapin/Airbrush_Boxy_T-shirt_Horse-removebg-preview.png">Reapin Horse Tee</option>
-                </select>
+                <input
+                  type="text" value={formImage}
+                  onChange={e => setFormImage(e.target.value)}
+                  className="form-input text-xs"
+                  placeholder="Paste a Google Drive link or image URL..."
+                />
+                {formImage && isGoogleDriveUrl(formImage) && (
+                  <p className="text-[8px] text-emerald-600 mt-1 flex items-center gap-1 font-semibold">
+                    <Link2 className="w-3 h-3" /> Google Drive link detected — will be converted automatically
+                  </p>
+                )}
+                {/* Live image preview */}
+                {formImage && (
+                  <div className="mt-2 w-20 h-24 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center overflow-hidden">
+                    <img
+                      src={resolveImageUrl(formImage)}
+                      alt="Preview"
+                      className="max-w-full max-h-full object-contain"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </div>
+                )}
               </div>
 
               <div>
