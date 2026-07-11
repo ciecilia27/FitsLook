@@ -10,10 +10,13 @@ import {
   Clock, Eye, MessageSquare, ChevronRight, Sparkles 
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
+import { getRole } from '@/lib/roles';
 
 function ChartsPageContent() {
   const router = useRouter();
-  
+  const { user } = useAuth();
+
   // Auth states
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   
@@ -31,12 +34,8 @@ function ChartsPageContent() {
   // Authenticate and fetch analytics records
   useEffect(() => {
     try {
-      const role = localStorage.getItem('userRole');
-      if (role === 'admin') {
-        setIsAdmin(true);
-      } else {
-        setIsAdmin(false);
-      }
+      // Derive admin from the authenticated email (roles.ts).
+      setIsAdmin(getRole(user?.email) === 'admin');
 
       setCatalog(getClientProducts());
       setBrandsList(getClientBrands());
@@ -47,7 +46,7 @@ function ChartsPageContent() {
     } catch {
       setIsAdmin(false);
     }
-  }, []);
+  }, [user]);
 
   if (isAdmin === null) {
     return <Loader />;

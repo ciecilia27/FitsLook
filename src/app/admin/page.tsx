@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { initAnalyticsData, ClickLog } from '@/lib/analytics';
 
 import { useAuth } from '@/lib/auth-context';
+import { getRole } from '@/lib/roles';
 
 function AdminPageContent() {
   const searchParams = useSearchParams();
@@ -25,9 +26,8 @@ function AdminPageContent() {
   const [hoveredBrand, setHoveredBrand] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Determine admin status from Supabase user metadata or localStorage fallback
-  const isAdmin = user?.user_metadata?.role === 'admin'
-    || (mounted && localStorage.getItem('userRole') === 'admin');
+  // Admin status is derived from the authenticated email (roles.ts).
+  const isAdmin = getRole(user?.email) === 'admin';
 
   // Catalogs state
   const [catalog, setCatalog] = useState<Product[]>([]);

@@ -6,6 +6,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { Menu, X, Phone, User, ShieldAlert, LogOut, LogIn, LayoutDashboard, ShoppingBag, Grid, MessageSquare } from 'lucide-react';
 
 import { useAuth } from '@/lib/auth-context';
+import { getRole } from '@/lib/roles';
 
 const userNavLinks = [
   { href: '/', label: 'Home' },
@@ -49,10 +50,11 @@ function NavbarContent() {
   const { user, loading, signOut } = useAuth();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
-  // Determine role from user metadata or localStorage fallback
-  const userRole = user?.user_metadata?.role ?? (typeof window !== 'undefined' ? localStorage.getItem('userRole') : null);
-  const isLoggedIn = !!user || (typeof window !== 'undefined' && !!localStorage.getItem('userEmail'));
-  const userEmail = user?.email ?? (typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null);
+  const isLoggedIn = !!user;
+  const userEmail = user?.email ?? null;
+  // Role is derived from the authenticated email (single source of truth in roles.ts),
+  // so it works for both password and Google sign-in.
+  const userRole = getRole(userEmail);
 
   useEffect(() => {
     try {
