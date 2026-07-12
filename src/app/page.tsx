@@ -6,7 +6,7 @@ import BrandMarquee from '@/components/BrandMarquee';
 import { getFeaturedProducts } from '@/lib/products';
 import Link from 'next/link';
 import { ArrowRight, Scan, Shirt, Sparkles, Star } from 'lucide-react';
-import { generateDummyFeedbacks, Feedback } from '@/lib/analytics';
+import { Feedback } from '@/lib/analytics';
 
 const bodyTags = ['Hourglass Fit', 'Athletic Silhouette', 'Regular Fit', 'Slim Proportions', 'Relaxed Frame', 'Tall & Lean'];
 const roles = ['Verified Buyer', 'Fashion Enthusiast', 'Style Critic', 'Fit Explorer', 'Trend Follower'];
@@ -16,29 +16,21 @@ export default function Home() {
   
   const [mounted, setMounted] = useState(false);
   const [reviews, setReviews] = useState<Feedback[]>([]);
+  const [reviewsLoaded, setReviewsLoaded] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    let list: Feedback[] = [];
-    const raw = localStorage.getItem('feedbacks');
-    if (raw) {
-      try {
-        list = JSON.parse(raw);
-      } catch {
-        list = [];
-      }
-    }
-    // Fallback to rich seeder if empty
-    if (list.length === 0) {
-      list = generateDummyFeedbacks();
-    }
-
-    // Filter for 4 and 5 star ratings only
-    const filtered = list.filter(r => r.rating === 4 || r.rating === 5);
-    
-    // Shuffle randomly on load
-    const shuffled = [...filtered].sort(() => Math.random() - 0.5);
-    setReviews(shuffled);
+    fetch('/api/feedback')
+      .then(res => res.ok ? res.json() : [])
+      .then((list: Feedback[]) => {
+        if (!Array.isArray(list)) return;
+        // Filter for 4 and 5 star ratings only
+        const filtered = list.filter(r => r.rating === 4 || r.rating === 5);
+        // Shuffle randomly on load
+        setReviews([...filtered].sort(() => Math.random() - 0.5));
+      })
+      .catch(() => setReviews([]))
+      .finally(() => setReviewsLoaded(true));
   }, []);
 
   return (
@@ -229,6 +221,8 @@ export default function Home() {
               </div>
             </div>
           </div>
+        ) : reviewsLoaded ? (
+          <p className="text-sm text-gray-400 text-center py-10">No reviews yet — be the first to share your experience.</p>
         ) : (
           <div className="grid md:grid-cols-3 gap-6">
             {Array.from({ length: 3 }).map((_, idx) => (

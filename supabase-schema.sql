@@ -60,6 +60,8 @@ CREATE POLICY "Allow anon read" ON shopee_clicks FOR SELECT USING (true);
 ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow anonymous insert" ON feedback;
 CREATE POLICY "Allow anonymous insert" ON feedback FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow anon read" ON feedback;
+CREATE POLICY "Allow anon read" ON feedback FOR SELECT USING (true);
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow anon insert" ON profiles;

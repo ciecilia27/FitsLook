@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { getClientProducts, Product } from '@/lib/products';
 import { getClientBrands, Brand } from '@/lib/brands';
-import { initAnalyticsData, ClickLog, Feedback } from '@/lib/analytics';
+import { fetchAnalyticsData, ClickLog, Feedback } from '@/lib/analytics';
 import { 
   ArrowLeft, ShieldAlert, TrendingUp, Star, ShoppingBag, Grid, 
   Clock, Eye, MessageSquare, ChevronRight, Sparkles 
@@ -40,9 +40,10 @@ function ChartsPageContent() {
       setCatalog(getClientProducts());
       setBrandsList(getClientBrands());
 
-      const { clicks: loadedClicks, feedbacks: loadedFeedbacks } = initAnalyticsData();
-      setClicks(loadedClicks);
-      setFeedbacks(loadedFeedbacks);
+      fetchAnalyticsData().then(({ clicks: loadedClicks, feedbacks: loadedFeedbacks }) => {
+        setClicks(loadedClicks);
+        setFeedbacks(loadedFeedbacks);
+      });
     } catch {
       setIsAdmin(false);
     }

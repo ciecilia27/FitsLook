@@ -7,35 +7,25 @@ export default function FeedbackPage() {
   const [form, setForm] = useState({ name: '', email: '', message: '', rating: 5 });
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setError('');
     try {
-      // Save locally to localStorage first
-      const newFeedback = {
-        id: Date.now().toString(),
-        name: form.name || 'Anonymous',
-        email: form.email || 'N/A',
-        message: form.message,
-        rating: form.rating,
-        created_at: new Date().toISOString()
-      };
-      
-      const existing = localStorage.getItem('feedbacks');
-      const list = existing ? JSON.parse(existing) : [];
-      list.unshift(newFeedback);
-      localStorage.setItem('feedbacks', JSON.stringify(list));
-
-      await fetch('/api/feedback', {
+      const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || 'Failed to submit feedback');
+      }
       setSubmitted(true);
-    } catch (err) {
-      // Allow fallback local submission even if API endpoint / Supabase fails
-      setSubmitted(true);
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -123,6 +113,10 @@ export default function FeedbackPage() {
             placeholder="Share your thoughts on body scans or outfit fit alignment..."
           />
         </div>
+
+        {error && (
+          <p className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</p>
+        )}
 
         <button type="submit" disabled={saving || !form.message.trim()} className="btn-dark w-full py-4 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md">
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-4 h-4" /> Submit Feedback</>}

@@ -3,6 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 // GET /api/admin/users — list all users with profiles and subscriptions
 export async function GET(req: NextRequest) {
   try {
+    const { requireAdmin } = await import('@/lib/admin-guard');
+    const denied = await requireAdmin();
+    if (denied) {
+      return NextResponse.json({ error: denied.error }, { status: denied.status });
+    }
+
     const { getAdminClient } = await import('@/lib/supabase');
     const supabase = getAdminClient();
 
@@ -27,6 +33,12 @@ export async function GET(req: NextRequest) {
 // PUT /api/admin/users/:userId/subscription — update a user's subscription
 export async function PUT(req: NextRequest) {
   try {
+    const { requireAdmin } = await import('@/lib/admin-guard');
+    const denied = await requireAdmin();
+    if (denied) {
+      return NextResponse.json({ error: denied.error }, { status: denied.status });
+    }
+
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
 

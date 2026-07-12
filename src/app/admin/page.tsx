@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { resolveImageUrl, isGoogleDriveUrl } from '@/lib/google-drive';
 import Link from 'next/link';
-import { initAnalyticsData, ClickLog } from '@/lib/analytics';
+import { fetchAnalyticsData, ClickLog } from '@/lib/analytics';
 
 import { useAuth } from '@/lib/auth-context';
 import { getRole } from '@/lib/roles';
@@ -71,16 +71,17 @@ function AdminPageContent() {
     setMounted(true);
   }, []);
 
-  // Load data from localStorage after mount
+  // Load catalog from localStorage and analytics from the database after mount
   useEffect(() => {
     if (!mounted) return;
     try {
       setCatalog(getClientProducts());
       setBrandsList(getClientBrands());
-      const { clicks: loadedClicks, feedbacks: loadedFeedbacks } = initAnalyticsData();
+    } catch {}
+    fetchAnalyticsData().then(({ clicks: loadedClicks, feedbacks: loadedFeedbacks }) => {
       setClicks(loadedClicks);
       setFeedbacks(loadedFeedbacks);
-    } catch {}
+    });
   }, [mounted]);
 
   // Sync tab state with search parameters
@@ -297,11 +298,14 @@ function AdminPageContent() {
   };
 
   // Feedback Handlers
-  const handleDeleteFeedback = (id: string) => {
-    if (confirm('Delete this feedback review?')) {
-      const updated = feedbacks.filter(f => f.id !== id);
-      setFeedbacks(updated);
-      localStorage.setItem('feedbacks', JSON.stringify(updated));
+  const handleDeleteFeedback = async (id: string) => {
+    if (!confirm('Delete this feedback review?')) return;
+    try {
+      const res = await fetch(`/api/feedback?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+      setFeedbacks(feedbacks.filter(f => f.id !== id));
+    } catch {
+      alert('Failed to delete feedback. Please try again.');
     }
   };
 

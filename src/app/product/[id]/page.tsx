@@ -100,18 +100,17 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const purchaseUrl = product.shopeeUrl || brand?.storeUrl || '#';
 
   const handlePurchaseClick = () => {
-    try {
-      const raw = localStorage.getItem('shopeeClicksLog') || '[]';
-      const parsed = JSON.parse(raw);
-      const newClick = {
-        id: Date.now().toString(),
+    fetch('/api/track-click', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         brand: product.brand,
         product_name: product.name,
-        clicked_at: Date.now()
-      };
-      parsed.unshift(newClick); // Add to beginning of logs
-      localStorage.setItem('shopeeClicksLog', JSON.stringify(parsed));
-    } catch {}
+        shopee_url: purchaseUrl,
+        source: 'product-page',
+      }),
+      keepalive: true,
+    }).catch(() => {});
   };
 
   // Mock pricing tailored to the brand's local market
