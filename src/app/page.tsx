@@ -137,89 +137,30 @@ export default function Home() {
           </Link>
         </div>
         
-        {mounted && reviews.length > 0 ? (
+        {mounted && reviews.length >= 4 ? (
           <div className="w-full overflow-hidden relative py-4">
-            <div 
+            <div
               className="flex gap-6 w-max hover:[animation-play-state:paused] cursor-pointer"
-              style={{ 
-                animation: 'scroll-brands 80s linear infinite' 
+              style={{
+                animation: 'scroll-brands 80s linear infinite'
 
               }}
             >
-              {/* First scrolling segment */}
-              <div className="flex gap-6 flex-shrink-0">
-                {reviews.map((item, idx) => (
-                  <div 
-                    key={`scroll1-${item.id}-${idx}`} 
-                    className="bg-white p-6 rounded-3xl border border-gray-150/80 shadow-sm flex flex-col justify-between space-y-4 w-72 sm:w-80 h-44"
-                  >
-                    <div className="space-y-2.5">
-                      <div className="flex gap-0.5">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-3.5 h-3.5 ${
-                              i < item.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <p className="text-[11px] text-gray-500 italic leading-relaxed line-clamp-3">
-                        "{item.message}"
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between border-t border-gray-50 pt-2.5 gap-2">
-                      <div className="truncate">
-                        <h4 className="font-bold text-xs text-gray-800 truncate">{item.name}</h4>
-                        <p className="text-[9px] text-gray-400 font-medium tracking-wide">
-                          {roles[idx % roles.length]}
-                        </p>
-                      </div>
-                      <span className="px-2 py-0.5 rounded bg-gray-50 text-[8px] font-bold text-gray-400 border border-gray-100 uppercase tracking-wider shrink-0">
-                        {bodyTags[idx % bodyTags.length]}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Duplicate scrolling segment for infinite loop */}
-              <div className="flex gap-6 flex-shrink-0">
-                {reviews.map((item, idx) => (
-                  <div 
-                    key={`scroll2-${item.id}-${idx}`} 
-                    className="bg-white p-6 rounded-3xl border border-gray-150/80 shadow-sm flex flex-col justify-between space-y-4 w-72 sm:w-80 h-44"
-                  >
-                    <div className="space-y-2.5">
-                      <div className="flex gap-0.5">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-3.5 h-3.5 ${
-                              i < item.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <p className="text-[11px] text-gray-500 italic leading-relaxed line-clamp-3">
-                        "{item.message}"
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between border-t border-gray-50 pt-2.5 gap-2">
-                      <div className="truncate">
-                        <h4 className="font-bold text-xs text-gray-800 truncate">{item.name}</h4>
-                        <p className="text-[9px] text-gray-400 font-medium tracking-wide">
-                          {roles[idx % roles.length]}
-                        </p>
-                      </div>
-                      <span className="px-2 py-0.5 rounded bg-gray-50 text-[8px] font-bold text-gray-400 border border-gray-100 uppercase tracking-wider shrink-0">
-                        {bodyTags[idx % bodyTags.length]}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {/* Two identical segments so the marquee loops seamlessly */}
+              {['scroll1', 'scroll2'].map(segment => (
+                <div key={segment} className="flex gap-6 flex-shrink-0">
+                  {reviews.map((item, idx) => (
+                    <ReviewCard key={`${segment}-${item.id}-${idx}`} item={item} idx={idx} className="w-72 sm:w-80 h-44" />
+                  ))}
+                </div>
+              ))}
             </div>
+          </div>
+        ) : mounted && reviews.length > 0 ? (
+          <div className="grid md:grid-cols-3 gap-6 py-4">
+            {reviews.map((item, idx) => (
+              <ReviewCard key={`${item.id}-${idx}`} item={item} idx={idx} className="h-44" />
+            ))}
           </div>
         ) : reviewsLoaded ? (
           <p className="text-sm text-gray-400 text-center py-10">No reviews yet — be the first to share your experience.</p>
@@ -233,6 +174,39 @@ export default function Home() {
       </section>
 
       <div className="h-4" />
+    </div>
+  );
+}
+
+function ReviewCard({ item, idx, className = '' }: { item: Feedback; idx: number; className?: string }) {
+  return (
+    <div className={`bg-white p-6 rounded-3xl border border-gray-150/80 shadow-sm flex flex-col justify-between space-y-4 ${className}`}>
+      <div className="space-y-2.5">
+        <div className="flex gap-0.5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Star
+              key={i}
+              className={`w-3.5 h-3.5 ${
+                i < item.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'
+              }`}
+            />
+          ))}
+        </div>
+        <p className="text-[11px] text-gray-500 italic leading-relaxed line-clamp-3">
+          "{item.message}"
+        </p>
+      </div>
+      <div className="flex items-center justify-between border-t border-gray-50 pt-2.5 gap-2">
+        <div className="truncate">
+          <h4 className="font-bold text-xs text-gray-800 truncate">{item.name}</h4>
+          <p className="text-[9px] text-gray-400 font-medium tracking-wide">
+            {roles[idx % roles.length]}
+          </p>
+        </div>
+        <span className="px-2 py-0.5 rounded bg-gray-50 text-[8px] font-bold text-gray-400 border border-gray-100 uppercase tracking-wider shrink-0">
+          {bodyTags[idx % bodyTags.length]}
+        </span>
+      </div>
     </div>
   );
 }
